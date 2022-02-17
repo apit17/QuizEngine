@@ -7,11 +7,14 @@ import Foundation
 protocol Router {
     typealias AnswerCallback = (String) -> Void
     func routeTo(question: String, answerCallback: @escaping AnswerCallback)
+    func routeTo(result: [String: String])
 }
 
 class Flow {
     private let router: Router
     private let questions: [String]
+
+    private var result: [String: String] = [:]
 
     init(questions: [String], router: Router) {
         self.router = router
@@ -20,18 +23,26 @@ class Flow {
 
     func start() {
         if let firstQuestion = questions.first {
-            router.routeTo(question: firstQuestion, answerCallback: routeNext(from: firstQuestion))
+            router.routeTo(question: firstQuestion, answerCallback: nextCallback(from: firstQuestion))
+        } else {
+            router.routeTo(result: result)
         }
     }
 
-    private func routeNext(from question: String) -> Router.AnswerCallback {
-        return { [weak self] _ in
-            guard let self = self else { return }
-            if let currentQuestionIndex = self.questions.firstIndex(of: question) {
-                if currentQuestionIndex + 1 < self.questions.count {
-                    let nextQuestion = self.questions[currentQuestionIndex + 1]
-                    self.router.routeTo(question: nextQuestion, answerCallback: self.routeNext(from: nextQuestion))
-                }
+    private func nextCallback(from question: String) -> Router.AnswerCallback {
+        return { [weak self] in self?.routeNext(question, $0) }
+    }
+
+    private func routeNext(_ question: String, _ answer: String) {
+        if let currentQuestionIndex = questions.firstIndex(of: question) {
+            result[question] = answer
+
+            let nextQuestionIndex = currentQuestionIndex + 1
+            if nextQuestionIndex < questions.count {
+                let nextQuestion = questions[nextQuestionIndex]
+                router.routeTo(question: nextQuestion, answerCallback: nextCallback(from: nextQuestion))
+            } else {
+                router.routeTo(result: result)
             }
         }
     }
