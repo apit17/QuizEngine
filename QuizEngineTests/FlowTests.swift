@@ -7,45 +7,34 @@ import XCTest
 
 class FlowTests: XCTestCase {
 
-    func test_start_withNoQuestions_doesNotRouteToQuestion() {
-        let router = RouterSpy()
-        let sut = Flow(questions: [], router: router)
+    let router = RouterSpy()
 
-        sut.start()
+    func test_start_withNoQuestions_doesNotRouteToQuestion() {
+        makeSUT(questions: []).start()
 
         XCTAssertTrue(router.routedQuestions.isEmpty)
     }
 
     func test_start_withOneQuestions_routeToCorrectQuestion() {
-        let router = RouterSpy()
-        let sut = Flow(questions: ["Q1"], router: router)
-
-        sut.start()
+        makeSUT(questions: ["Q1"]).start()
 
         XCTAssertEqual(router.routedQuestions, ["Q1"])
     }
 
     func test_start_withOneQuestions_routeToCorrectQuestion_2() {
-        let router = RouterSpy()
-        let sut = Flow(questions: ["Q2"], router: router)
-
-        sut.start()
+        makeSUT(questions: ["Q2"]).start()
 
         XCTAssertEqual(router.routedQuestions, ["Q2"])
     }
 
     func test_start_withTwoQuestions_routeToFirstQuestion() {
-        let router = RouterSpy()
-        let sut = Flow(questions: ["Q1", "Q2"], router: router)
-
-        sut.start()
+        makeSUT(questions: ["Q1", "Q2"]).start()
 
         XCTAssertEqual(router.routedQuestions, ["Q1"])
     }
 
     func test_startTwice_withTwoQuestions_routeToFirstQuestionTwice() {
-        let router = RouterSpy()
-        let sut = Flow(questions: ["Q1", "Q2"], router: router)
+        let sut = makeSUT(questions: ["Q1", "Q2"])
 
         sut.start()
         sut.start()
@@ -54,8 +43,7 @@ class FlowTests: XCTestCase {
     }
 
     func test_startAndAnswerFirstQuestion_withTwoQuestions_routeToSecondQuestion() {
-        let router = RouterSpy()
-        let sut = Flow(questions: ["Q1", "Q2"], router: router)
+        let sut = makeSUT(questions: ["Q1", "Q2"])
 
         sut.start()
         router.answerCallback("A1")
@@ -63,11 +51,36 @@ class FlowTests: XCTestCase {
         XCTAssertEqual(router.routedQuestions, ["Q1", "Q2"])
     }
 
+    func test_startAndAnswerFirstAndSecondQuestion_withThreeQuestions_routeToSecondAndThirdQuestion() {
+        let sut = makeSUT(questions: ["Q1", "Q2", "Q3"])
+
+        sut.start()
+        router.answerCallback("A1")
+        router.answerCallback("A2")
+
+        XCTAssertEqual(router.routedQuestions, ["Q1", "Q2", "Q3"])
+    }
+
+    func test_startAndAnswerFirstQuestion_withOneQuestion_doesNotRouteToAnotherQuestion() {
+        let sut = makeSUT(questions: ["Q1"])
+
+        sut.start()
+        router.answerCallback("A1")
+
+        XCTAssertEqual(router.routedQuestions, ["Q1"])
+    }
+
+    // MARK: Helpers
+
+    func makeSUT(questions: [String]) -> Flow {
+        Flow(questions: questions, router: router)
+    }
+
     class RouterSpy: Router {
         var routedQuestions: [String] = []
-        var answerCallback: ((String) -> Void) = { _ in }
+        var answerCallback: Router.AnswerCallback = { _ in }
 
-        func routeTo(question: String, answerCallback: @escaping (String) -> Void) {
+        func routeTo(question: String, answerCallback: @escaping Router.AnswerCallback) {
             routedQuestions.append(question)
             self.answerCallback = answerCallback
         }
